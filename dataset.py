@@ -20,11 +20,14 @@ data_transforms = {
 }
 
 def get_dataloaders(root, batch_size=32):
-    # Load the trainval dataset
-    train_dataset = OxfordIIITPet(root=root, split='trainval', download=True, transform=data_transforms['train'])
+    train_root = f"{root}/train"
+    val_root = f"{root}/val"
     
-    # Load the test dataset as validation dataset
-    val_dataset = OxfordIIITPet(root=root, split='test', download=True, transform=data_transforms['val'])
+    # Load the train dataset
+    train_dataset = OxfordIIITPet(root=train_root, split='trainval', download=True, transform=data_transforms['train'])
+    
+    # Load the validation dataset
+    val_dataset = OxfordIIITPet(root=val_root, split='test', download=True, transform=data_transforms['val'])
     
     # Create dataloaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
