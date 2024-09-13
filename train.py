@@ -1,7 +1,7 @@
 import torch
 from torch import nn, optim
 from torch.utils.tensorboard import SummaryWriter
-from sklearn.metrics import precision_score, recall_score, f1_score
+from torchmetrics import Precision, Recall, F1
 from dataset import get_dataloaders
 from model import ViT
 import os
@@ -27,6 +27,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = ViT().to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+precision_metric = Precision(average='weighted').to(device)
+recall_metric = Recall(average='weighted').to(device)
+f1_metric = F1(average='weighted').to(device)
 
 def train(model, train_loader, criterion, optimizer, epoch):
     model.train()
@@ -60,8 +64,9 @@ def validate(model, val_loader, criterion, epoch):
     running_loss = 0.0
     correct = 0
     total = 0
-    all_labels = []
-    all_predictions = []
+    precision_metric.reset()
+    recall_metric.reset()
+    f1_metric.reset()
 
     with torch.no_grad():
         for inputs, labels in val_loader:
@@ -74,14 +79,15 @@ def validate(model, val_loader, criterion, epoch):
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-            all_labels.extend(labels.cpu().numpy())
-            all_predictions.extend(predicted.cpu().numpy())
+            precision_metric.update(predicted, labels)
+            recall_metric.update(predicted, labels)
+            f1_metric.update(predicted, labels)
 
     epoch_loss = running_loss / len(val_loader)
     epoch_acc = 100 * correct / total
-    precision = precision_score(all_labels, all_predictions, average='weighted')
-    recall = recall_score(all_labels, all_predictions, average='weighted')
-    f1 = f1_score(all_labels, all_predictions, average='weighted')
+    precision = precision_metric.compute().item()
+    recall = recall_metric.compute().item()
+    f1 = f1_metric.compute().item()
 
     writer.add_scalar('Loss/val', epoch_loss, epoch)
     writer.add_scalar('Accuracy/val', epoch_acc, epoch)
